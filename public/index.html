@@ -3,177 +3,116 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>24/7 Chat & Call</title>
+<title>Chat App</title>
 <style>
   body {
-    margin: 0; padding: 0; font-family: Arial, sans-serif;
-    background-color: #121212;
-    color: #ddd;
-    display: flex; flex-direction: column; height: 100vh;
+    margin: 0; padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #0a3d0a;
+    color: #cce5cc;
   }
-  #loginScreen, #chatScreen {
-    margin: auto; width: 100%; max-width: 600px;
-  }
-  #loginScreen {
-    display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;
-  }
-  #loginScreen input {
-    font-size: 1.2rem; padding: 10px;
-    width: 200px; border-radius: 4px; border: none;
-  }
-  #loginScreen button {
-    margin-top: 10px; font-size: 1.2rem;
-    padding: 10px 20px; border: none; border-radius: 4px;
-    background-color: #1e88e5; color: white; cursor: pointer;
-  }
-
-  #chatScreen {
-    display: none; flex-direction: column; height: 100vh;
-  }
-
-  #usersOnline {
+  #login, #chat, #callControls {
+    max-width: 600px;
+    margin: 20px auto;
     padding: 10px;
-    background: #1f1f1f;
-    border-bottom: 1px solid #333;
+    background: #144214;
+    border-radius: 8px;
   }
-  #usersOnline span {
-    margin-right: 10px;
-    cursor: default;
-  }
-
-  #messages {
-    flex-grow: 1;
-    padding: 10px;
-    overflow-y: auto;
-    background: #181818;
-  }
-  .message {
-    margin-bottom: 10px;
-    border-radius: 5px;
-    padding: 5px 10px;
-    background: #222;
-  }
-  .message .author {
-    font-weight: bold;
-  }
-  .message .text {
-    margin-top: 3px;
-    word-wrap: break-word;
-    max-width: 80%;
-  }
-  .message img, .message video {
-    margin-top: 5px;
-    max-width: 200px;
-    border-radius: 5px;
-  }
-  .message .seen {
-    font-size: 0.7rem;
-    color: #888;
-    margin-top: 3px;
-  }
-
-  #inputArea {
-    background: #1f1f1f;
-    padding: 10px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  #inputArea input[type="text"] {
-    flex-grow: 1;
-    font-size: 1rem;
+  #login { display: block; }
+  #chat, #callControls { display: none; }
+  input, button {
     padding: 8px;
+    margin: 5px 0;
     border-radius: 4px;
     border: none;
   }
-  #inputArea input[type="file"] {
-    color: white;
-  }
-  #inputArea button {
-    background: #1e88e5;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 4px;
+  button {
+    background-color: #2eb82e;
     color: white;
     cursor: pointer;
   }
-
-  #videos {
-    display: flex;
-    justify-content: space-around;
-    background: #000;
+  button:hover {
+    background-color: #1f7a1f;
+  }
+  #messages {
+    height: 300px;
+    overflow-y: auto;
+    border: 1px solid #2eb82e;
     padding: 5px;
+    background: #063006;
+    margin-bottom: 10px;
+  }
+  .message {
+    margin-bottom: 6px;
+  }
+  .author {
+    font-weight: bold;
+    color: #90ee90;
+  }
+  .bold {
+    font-weight: bolder;
+  }
+  #usersOnline {
+    margin-bottom: 10px;
   }
   video {
-    max-height: 150px;
+    max-width: 100%;
     border-radius: 8px;
     background: black;
   }
-
-  #callControls {
-    display: flex;
-    justify-content: center;
-    padding: 10px;
-    background: #1f1f1f;
-    gap: 10px;
+  #localVideo, #remoteVideo {
+    width: 48%;
+    display: inline-block;
+    vertical-align: top;
   }
   #callControls button {
-    padding: 8px 15px;
-    background: #2196f3;
-    border: none;
-    border-radius: 5px;
-    color: white;
-    cursor: pointer;
+    margin-right: 10px;
   }
 </style>
 </head>
 <body>
 
-<div id="loginScreen">
+<div id="login">
   <h2>Login</h2>
-  <input type="text" id="usernameInput" placeholder="Enter username: Galaad or Skull" />
+  <input id="usernameInput" placeholder="Enter Galaad or Skull" autocomplete="off" />
   <button id="loginBtn">Login</button>
+  <div id="loginMsg" style="color:#ff6666; margin-top: 5px;"></div>
 </div>
 
-<div id="chatScreen">
-  <div id="usersOnline"><strong>Users online:</strong> <span id="usersOnlineSpan"></span></div>
+<div id="chat">
+  <h3>Users online: <span id="usersOnline"></span></h3>
   <div id="messages"></div>
+  <input id="messageInput" placeholder="Type a message..." autocomplete="off" />
+  <input type="file" id="fileInput" />
+  <button id="sendBtn">Send</button>
+</div>
 
-  <div id="inputArea">
-    <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" />
-    <input type="file" id="fileInput" accept="image/*,video/*,.gif" />
-    <button id="sendBtn">Send</button>
-  </div>
-
-  <div id="videos">
-    <video id="localVideo" autoplay muted></video>
-    <video id="remoteVideo" autoplay></video>
-  </div>
-
-  <div id="callControls">
-    <button id="callBtn">Start Call</button>
-    <button id="screenShareBtn">Share Screen</button>
-    <button id="hangupBtn" style="display:none;">Hang Up</button>
-  </div>
+<div id="callControls">
+  <video id="localVideo" autoplay muted></video>
+  <video id="remoteVideo" autoplay></video>
+  <br />
+  <button id="callBtn">Call</button>
+  <button id="screenShareBtn">Share Screen</button>
+  <button id="hangupBtn" style="display:none; background:#cc3300;">Hang Up</button>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/simple-peer@9/simplepeer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
 <script>
   const socket = io();
 
-  // UI refs
-  const loginScreen = document.getElementById('loginScreen');
-  const chatScreen = document.getElementById('chatScreen');
-  const usernameInput = document.getElementById('usernameInput');
+  const loginDiv = document.getElementById('login');
+  const chatDiv = document.getElementById('chat');
+  const callControls = document.getElementById('callControls');
   const loginBtn = document.getElementById('loginBtn');
-  const usersOnlineSpan = document.getElementById('usersOnlineSpan');
+  const usernameInput = document.getElementById('usernameInput');
+  const loginMsg = document.getElementById('loginMsg');
+  const usersOnlineSpan = document.getElementById('usersOnline');
   const messagesDiv = document.getElementById('messages');
   const messageInput = document.getElementById('messageInput');
-  const fileInput = document.getElementById('fileInput');
   const sendBtn = document.getElementById('sendBtn');
-  const localVideo = document.getElementById('localVideo');
-  const remoteVideo = document.getElementById('remoteVideo');
+  const fileInput = document.getElementById('fileInput');
+
   const callBtn = document.getElementById('callBtn');
   const screenShareBtn = document.getElementById('screenShareBtn');
   const hangupBtn = document.getElementById('hangupBtn');
@@ -182,85 +121,85 @@
   let peer = null;
   let localStream = null;
   let userSocketMap = {};
+  let messages = [];
 
-  // Login logic
   loginBtn.onclick = () => {
     const val = usernameInput.value.trim();
-    if (val !== 'Galaad' && val !== 'Skull') {
-      alert('Invalid username! Use Galaad or Skull.');
-      return;
-    }
-    username = val;
-    socket.emit('login', username);
-    loginScreen.style.display = 'none';
-    chatScreen.style.display = 'flex';
+    if (!val) return;
+    socket.emit('login', val, (res) => {
+      if (res.success) {
+        username = val;
+        loginDiv.style.display = 'none';
+        chatDiv.style.display = 'block';
+        callControls.style.display = 'block';
+        loginMsg.textContent = '';
+      } else {
+        loginMsg.textContent = res.message;
+      }
+    });
   };
 
-  // Update users online list
-  socket.on('usersOnline', (list) => {
-    usersOnlineSpan.innerHTML = '';
-    list.forEach(user => {
-      const span = document.createElement('span');
-      span.textContent = user;
-      span.style.marginRight = '10px';
-      span.id = 'user-' + user;
-      usersOnlineSpan.appendChild(span);
+  // Update users list
+  socket.on('users', (users) => {
+    usersOnlineSpan.textContent = users.join(', ');
+    users.forEach(u => {
+      if (!userSocketMap[u]) userSocketMap[u] = null;
     });
   });
 
-  // Update userSocketMap
-  socket.on('userSocketMap', (map) => {
-    userSocketMap = map;
+  // Send message
+  sendBtn.onclick = () => {
+    sendMessage();
+  };
+  messageInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendMessage();
   });
-
-  // Message sending
-  sendBtn.onclick = sendMessage;
-  messageInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
 
   function sendMessage() {
     const text = messageInput.value.trim();
-    if (!text) return;
+    if (!text && !fileInput.files.length) return;
+
+    if (fileInput.files.length) {
+      // upload file to server? Here just encode as URL.createObjectURL
+      const file = fileInput.files[0];
+      let msgText = '';
+
+      if (file.type.startsWith('image/')) {
+        const url = URL.createObjectURL(file);
+        msgText = `<img src="${url}" alt="img" style="max-width:200px; max-height:150px; border-radius:5px;" />`;
+      } else if (file.type.startsWith('video/') || file.name.endsWith('.gif')) {
+        const url = URL.createObjectURL(file);
+        msgText = `<video src="${url}" autoplay muted loop style="max-width:200px; max-height:150px; border-radius:5px;"></video>`;
+      } else {
+        alert('Unsupported file type');
+        return;
+      }
+      const msg = { id: Date.now(), author: username, text: msgText, seenBy: [] };
+      socket.emit('message', msg);
+      fileInput.value = '';
+      messageInput.value = '';
+      return;
+    }
+
     const msg = { id: Date.now(), author: username, text, seenBy: [] };
     socket.emit('message', msg);
     messageInput.value = '';
   }
 
-  // File upload & send
-  fileInput.onchange = () => {
-    const file = fileInput.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    fetch('/upload', { method: 'POST', body: formData })
-      .then(res => res.json())
-      .then(data => {
-        let msgText = '';
-        if (file.type.startsWith('image/')) msgText = `<img src="${data.url}" alt="img" />`;
-        else if (file.type.startsWith('video/') || file.name.endsWith('.gif')) msgText = `<video src="${data.url}" autoplay muted loop></video>`;
-        else msgText = 'Unsupported file type';
-
-        const msg = { id: Date.now(), author: username, text: msgText, seenBy: [] };
-        socket.emit('message', msg);
-        fileInput.value = '';
-      })
-      .catch(() => alert('Upload failed'));
-  };
-
-  // Receive messages
+  // Receive message
   socket.on('message', (msg) => {
-    addMessageToChat(msg);
+    messages.push(msg);
+    addMessage(msg);
   });
 
-  // Receive history on login
+  // Receive history
   socket.on('history', (history) => {
+    messages = history;
     messagesDiv.innerHTML = '';
-    history.forEach(addMessageToChat);
+    history.forEach(addMessage);
   });
 
-  // Add message to chat DOM
-  function addMessageToChat(msg) {
+  function addMessage(msg) {
     const div = document.createElement('div');
     div.className = 'message';
     div.innerHTML = `<span class="author">${msg.author}:</span> <span class="text">${msg.text}</span>`;
@@ -268,20 +207,16 @@
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 
-  // --- Call logic ---
+  // Call handling
 
-  // Helpers to get other user info
   function getOtherUsername() {
-    const users = Object.keys(userSocketMap);
-    return users.find(u => u !== username);
+    return Object.keys(userSocketMap).find(u => u !== username);
   }
   function getOtherSocketId() {
     const other = getOtherUsername();
-    if (!other) return null;
-    return userSocketMap[other];
+    return userSocketMap[other] || null;
   }
 
-  // Audio volume detection to set bold user name
   function monitorAudioStream(user, stream) {
     try {
       const audioCtx = new AudioContext();
@@ -294,29 +229,26 @@
       function checkVolume() {
         analyser.getByteFrequencyData(dataArray);
         const volume = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-        const span = document.getElementById('user-' + user);
-        if (!span) return;
-        if (volume > 30) span.style.fontWeight = 'bold';
-        else span.style.fontWeight = 'normal';
+        const messagesElems = document.querySelectorAll('.author');
+        messagesElems.forEach(el => {
+          if (el.textContent.startsWith(user + ':')) {
+            el.style.fontWeight = volume > 30 ? 'bold' : 'normal';
+          }
+        });
         requestAnimationFrame(checkVolume);
       }
       checkVolume();
-    } catch (e) {
-      // AudioContext failed or no mic, ignore
-    }
+    } catch {}
   }
 
-  // Start call, screenShare = true si partage écran
   function startCall(screenShare = false) {
     if (peer) {
       alert('Call already in progress');
       return;
     }
-
     const constraints = { audio: true };
     if (!screenShare) {
-      const wantsCam = confirm('Do you want to share your webcam video?');
-      if (wantsCam) constraints.video = true;
+      if (confirm('Do you want to share your webcam video?')) constraints.video = true;
     }
 
     navigator.mediaDevices.getUserMedia(constraints).then(audioStream => {
@@ -339,7 +271,7 @@
     peer = new SimplePeer({
       initiator: true,
       trickle: false,
-      stream: stream
+      stream
     });
 
     localVideo.srcObject = stream;
@@ -348,21 +280,21 @@
 
     monitorAudioStream(username, stream);
 
-    const otherId = getOtherSocketId();
-    if (!otherId) {
+    const otherUser = getOtherUsername();
+    if (!otherUser) {
       alert('No other user online');
+      endCall();
       return;
     }
 
     peer.on('signal', data => {
-      socket.emit('callUser', { to: otherId, signal: data });
+      socket.emit('callUser', { to: otherUser, signal: data });
     });
 
     peer.on('stream', remoteStream => {
       remoteVideo.srcObject = remoteStream;
       remoteVideo.play();
-      const otherName = getOtherUsername();
-      monitorAudioStream(otherName, remoteStream);
+      monitorAudioStream(otherUser, remoteStream);
     });
 
     peer.on('close', endCall);
@@ -371,14 +303,13 @@
     hangupBtn.style.display = 'inline-block';
   }
 
-  // Answer incoming call
   socket.on('incomingCall', ({ from, signal }) => {
     if (peer) {
-      socket.emit('rejectCall', userSocketMap[from]);
+      // Already in call, just ignore (no reject to avoid immediate reject)
       return;
     }
     if (!confirm(`${from} is calling you. Accept?`)) {
-      socket.emit('rejectCall', userSocketMap[from]);
+      socket.emit('rejectCall', { to: from });
       return;
     }
 
@@ -399,7 +330,7 @@
       monitorAudioStream(username, stream);
 
       peer.on('signal', data => {
-        socket.emit('answerCall', { to: userSocketMap[from], signal: data });
+        socket.emit('answerCall', { to: from, signal: data });
       });
       peer.on('stream', remoteStream => {
         remoteVideo.srcObject = remoteStream;
@@ -414,28 +345,24 @@
     }).catch(() => alert('Could not get media'));
   });
 
-  // When call is answered
   socket.on('callAnswered', (signal) => {
     if (peer) peer.signal(signal);
   });
 
-  // Reject call
   socket.on('callRejected', () => {
     alert('Call rejected');
     endCall();
   });
 
-  // Call disconnected
   socket.on('callDisconnected', () => {
     alert('Call ended');
     endCall();
   });
 
-  // Hangup button
   hangupBtn.onclick = () => {
     if (peer) {
-      const otherId = getOtherSocketId();
-      if (otherId) socket.emit('disconnectCall', otherId);
+      const otherUser = getOtherUsername();
+      if (otherUser) socket.emit('disconnectCall', { to: otherUser });
       endCall();
     }
   };
@@ -446,23 +373,17 @@
       peer = null;
     }
     if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
+      localStream.getTracks().forEach(t => t.stop());
       localStream = null;
     }
     localVideo.srcObject = null;
     remoteVideo.srcObject = null;
     hangupBtn.style.display = 'none';
 
-    // Reset user name style bold
-    Array.from(usersOnlineSpan.children).forEach(span => {
-      span.style.fontWeight = 'normal';
-    });
+    // Reset bold authors in messages
+    const authors = document.querySelectorAll('.author');
+    authors.forEach(a => a.style.fontWeight = 'normal');
   }
-
-  // Buttons call
-  callBtn.onclick = () => startCall(false);
-  screenShareBtn.onclick = () => startCall(true);
-
 </script>
 
 </body>
