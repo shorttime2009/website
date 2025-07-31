@@ -74,7 +74,7 @@
 
 <div id="login">
   <h2>Login</h2>
-  <input id="usernameInput" placeholder="Enter user" autocomplete="off" />
+  <input id="usernameInput" placeholder="Enter ur user" autocomplete="off" />
   <button id="loginBtn">Login</button>
   <div id="loginMsg" style="color:#ff6666; margin-top: 5px;"></div>
 </div>
@@ -120,8 +120,8 @@
   let username = null;
   let peer = null;
   let localStream = null;
-  let userSocketMap = {};
   let messages = [];
+  let users = [];
 
   loginBtn.onclick = () => {
     const val = usernameInput.value.trim();
@@ -139,15 +139,11 @@
     });
   };
 
-  // Update users list
-  socket.on('users', (users) => {
+  socket.on('users', (userList) => {
+    users = userList;
     usersOnlineSpan.textContent = users.join(', ');
-    users.forEach(u => {
-      if (!userSocketMap[u]) userSocketMap[u] = null;
-    });
   });
 
-  // Send message
   sendBtn.onclick = () => {
     sendMessage();
   };
@@ -156,43 +152,44 @@
   });
 
   function sendMessage() {
-    const text = messageInput.value.trim();
-    if (!text && !fileInput.files.length) return;
+    if (!messageInput.value.trim() && !fileInput.files.length) return;
 
     if (fileInput.files.length) {
-      // upload file to server? Here just encode as URL.createObjectURL
       const file = fileInput.files[0];
-      let msgText = '';
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64data = reader.result;
 
-      if (file.type.startsWith('image/')) {
-        const url = URL.createObjectURL(file);
-        msgText = `<img src="${url}" alt="img" style="max-width:200px; max-height:150px; border-radius:5px;" />`;
-      } else if (file.type.startsWith('video/') || file.name.endsWith('.gif')) {
-        const url = URL.createObjectURL(file);
-        msgText = `<video src="${url}" autoplay muted loop style="max-width:200px; max-height:150px; border-radius:5px;"></video>`;
-      } else {
-        alert('Unsupported file type');
-        return;
-      }
-      const msg = { id: Date.now(), author: username, text: msgText, seenBy: [] };
-      socket.emit('message', msg);
-      fileInput.value = '';
-      messageInput.value = '';
+        let msgText = '';
+
+        if (file.type.startsWith('image/')) {
+          msgText = `<img src="${base64data}" alt="img" style="max-width:200px; max-height:150px; border-radius:5px;" />`;
+        } else if (file.type.startsWith('video/') || file.name.endsWith('.gif')) {
+          msgText = `<video src="${base64data}" autoplay muted loop style="max-width:200px; max-height:150px; border-radius:5px;"></video>`;
+        } else {
+          alert('Unsupported file type');
+          return;
+        }
+
+        const msg = { id: Date.now(), author: username, text: msgText };
+        socket.emit('message', msg);
+        fileInput.value = '';
+        messageInput.value = '';
+      };
+      reader.readAsDataURL(file);
       return;
     }
 
-    const msg = { id: Date.now(), author: username, text, seenBy: [] };
+    const msg = { id: Date.now(), author: username, text: messageInput.value.trim() };
     socket.emit('message', msg);
     messageInput.value = '';
   }
 
-  // Receive message
   socket.on('message', (msg) => {
     messages.push(msg);
     addMessage(msg);
   });
 
-  // Receive history
   socket.on('history', (history) => {
     messages = history;
     messagesDiv.innerHTML = '';
@@ -207,15 +204,26 @@
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 
-  // Call handling
+  // Call Handling
 
   function getOtherUsername() {
-    return Object.keys(userSocketMap).find(u => u !== username);
+    return users.find(u => u !== username);
   }
-  function getOtherSocketId() {
-    const other = getOtherUsername();
-    return userSocketMap[other] || null;
-  }
+
+  callBtn.onclick = () => {
+    startCall(false);
+  };
+  screenShareBtn.onclick = () => {
+    startCall(true);
+  };
+
+  hangupBtn.onclick = () => {
+    if (peer) {
+      const otherUser = getOtherUsername();
+      if (otherUser) socket.emit('disconnectCall', { to: otherUser });
+      endCall();
+    }
+  };
 
   function monitorAudioStream(user, stream) {
     try {
@@ -229,8 +237,8 @@
       function checkVolume() {
         analyser.getByteFrequencyData(dataArray);
         const volume = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-        const messagesElems = document.querySelectorAll('.author');
-        messagesElems.forEach(el => {
+        const authorsElems = document.querySelectorAll('.author');
+        authorsElems.forEach(el => {
           if (el.textContent.startsWith(user + ':')) {
             el.style.fontWeight = volume > 30 ? 'bold' : 'normal';
           }
@@ -278,94 +286,70 @@
     localVideo.muted = true;
     localVideo.play();
 
-    monitorAudioStream(username, stream);
-
-    const otherUser = getOtherUsername();
-    if (!otherUser) {
-      alert('No other user online');
-      endCall();
-      return;
-    }
-
     peer.on('signal', data => {
-      socket.emit('callUser', { to: otherUser, signal: data });
+      const otherUser = getOtherUsername();
+      if (otherUser) {
+        socket.emit('signal', { to: otherUser, data });
+      }
     });
 
     peer.on('stream', remoteStream => {
       remoteVideo.srcObject = remoteStream;
       remoteVideo.play();
-      monitorAudioStream(otherUser, remoteStream);
+      monitorAudioStream(getOtherUsername(), remoteStream);
     });
 
     peer.on('close', endCall);
     peer.on('error', endCall);
 
+    callBtn.style.display = 'none';
+    screenShareBtn.style.display = 'none';
     hangupBtn.style.display = 'inline-block';
   }
 
-  socket.on('incomingCall', ({ from, signal }) => {
-    if (peer) {
-      // Already in call, just ignore (no reject to avoid immediate reject)
-      return;
+  socket.on('signal', ({ from, data }) => {
+    if (!peer) {
+      // Not initiator
+      navigator.mediaDevices.getUserMedia({ audio: true, video: true }).then(stream => {
+        localStream = stream;
+        localVideo.srcObject = stream;
+        localVideo.muted = true;
+        localVideo.play();
+
+        peer = new SimplePeer({
+          initiator: false,
+          trickle: false,
+          stream
+        });
+
+        peer.on('signal', signalData => {
+          socket.emit('signal', { to: from, data: signalData });
+        });
+
+        peer.on('stream', remoteStream => {
+          remoteVideo.srcObject = remoteStream;
+          remoteVideo.play();
+          monitorAudioStream(from, remoteStream);
+        });
+
+        peer.on('close', endCall);
+        peer.on('error', endCall);
+
+        peer.signal(data);
+
+        callBtn.style.display = 'none';
+        screenShareBtn.style.display = 'none';
+        hangupBtn.style.display = 'inline-block';
+      }).catch(() => alert('Could not get media'));
+    } else {
+      peer.signal(data);
     }
-    if (!confirm(`${from} is calling you. Accept?`)) {
-      socket.emit('rejectCall', { to: from });
-      return;
-    }
-
-    const constraints = { audio: true };
-    if (confirm('Do you want to share your webcam video?')) constraints.video = true;
-
-    navigator.mediaDevices.getUserMedia(constraints).then(stream => {
-      localStream = stream;
-      peer = new SimplePeer({
-        initiator: false,
-        trickle: false,
-        stream
-      });
-      localVideo.srcObject = stream;
-      localVideo.muted = true;
-      localVideo.play();
-
-      monitorAudioStream(username, stream);
-
-      peer.on('signal', data => {
-        socket.emit('answerCall', { to: from, signal: data });
-      });
-      peer.on('stream', remoteStream => {
-        remoteVideo.srcObject = remoteStream;
-        remoteVideo.play();
-        monitorAudioStream(from, remoteStream);
-      });
-      peer.on('close', endCall);
-      peer.on('error', endCall);
-
-      peer.signal(signal);
-      hangupBtn.style.display = 'inline-block';
-    }).catch(() => alert('Could not get media'));
   });
 
-  socket.on('callAnswered', (signal) => {
-    if (peer) peer.signal(signal);
-  });
-
-  socket.on('callRejected', () => {
-    alert('Call rejected');
+  socket.on('disconnectCall', () => {
+    alert('Call ended by remote user');
     endCall();
   });
-
-  socket.on('callDisconnected', () => {
-    alert('Call ended');
-    endCall();
-  });
-
-  hangupBtn.onclick = () => {
-    if (peer) {
-      const otherUser = getOtherUsername();
-      if (otherUser) socket.emit('disconnectCall', { to: otherUser });
-      endCall();
-    }
-  };
 
   function endCall() {
     if (peer) {
@@ -378,11 +362,10 @@
     }
     localVideo.srcObject = null;
     remoteVideo.srcObject = null;
-    hangupBtn.style.display = 'none';
 
-    // Reset bold authors in messages
-    const authors = document.querySelectorAll('.author');
-    authors.forEach(a => a.style.fontWeight = 'normal');
+    callBtn.style.display = 'inline-block';
+    screenShareBtn.style.display = 'inline-block';
+    hangupBtn.style.display = 'none';
   }
 </script>
 
