@@ -10,34 +10,68 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 
-// Multer setup for uploads
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Multer config pour uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'public/uploads'),
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname),
+  destination: (req, file, cb) => cb(null, './public/uploads'),
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, unique + '-' + file.originalname);
+  }
 });
 const upload = multer({ storage });
 
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
-
-// Upload endpoint
 app.post('/upload', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).send('No file uploaded');
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   res.json({ url: '/uploads/' + req.file.filename });
 });
 
+// Users & sockets
 const usersOnline = new Set();
 const socketsUsers = {};
-const messages = []; // History stored here (simple memory)
+const userSocketMap = {};
+
+// Messages stockés pour historique
+const messages = [];
 
 io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
   socket.on('login', (username) => {
+    if (!username) return;
     socketsUsers[socket.id] = username;
+    userSocketMap[username] = socket.id;
     usersOnline.add(username);
     io.emit('usersOnline', Array.from(usersOnline));
-
-    // Send message history to this user
+    io.emit('userSocketMap', userSocketMap);
     socket.emit('history', messages);
+  });
+
+  socket.on('message', (msg) => {
+    messages.push(msg);
+    io.emit('message', msg);
+  });
+
+  // Appel signal
+  socket.on('callUser', ({ to, signal }) => {
+    if (!to) return;
+    io.to(to).emit('incomingCall', { from: socketsUsers[socket.id], signal });
+  });
+
+  socket.on('answerCall', ({ to, signal }) => {
+    if (!to) return;
+    io.to(to).emit('callAnswered', signal);
+  });
+
+  socket.on('rejectCall', (to) => {
+    if (!to) return;
+    io.to(to).emit('callRejected');
+  });
+
+  socket.on('disconnectCall', (to) => {
+    if (!to) return;
+    io.to(to).emit('callDisconnected');
   });
 
   socket.on('disconnect', () => {
@@ -45,44 +79,11 @@ io.on('connection', (socket) => {
     if (username) {
       usersOnline.delete(username);
       delete socketsUsers[socket.id];
+      delete userSocketMap[username];
       io.emit('usersOnline', Array.from(usersOnline));
+      io.emit('userSocketMap', userSocketMap);
     }
   });
-
-  socket.on('message', (msg) => {
-    msg.id = Date.now();
-    msg.seenBy = [];
-    messages.push(msg);
-    io.emit('message', msg);
-  });
-
-  socket.on('messageSeen', ({ messageId, username }) => {
-    const msg = messages.find(m => m.id === messageId);
-    if (msg && !msg.seenBy.includes(username)) {
-      msg.seenBy.push(username);
-      io.emit('messageSeenUpdate', { messageId, seenBy: msg.seenBy });
-    }
-  });
-
-  // WebRTC signaling for calls/screenshare
-  socket.on('callUser', (data) => {
-    io.to(data.to).emit('incomingCall', { from: socketsUsers[socket.id], signal: data.signal });
-  });
-
-  socket.on('answerCall', (data) => {
-    io.to(data.to).emit('callAnswered', data.signal);
-  });
-
-  socket.on('rejectCall', (to) => {
-    io.to(to).emit('callRejected');
-  });
-
-  socket.on('disconnectCall', (to) => {
-    io.to(to).emit('callDisconnected');
-  });
-
-  // Send socket.id back to client for WebRTC routing
-  socket.emit('yourID', socket.id);
 });
 
 server.listen(PORT, () => {
